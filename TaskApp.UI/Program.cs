@@ -23,13 +23,12 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        // Make sure SQLite DB schema exists
-        db.Database.Migrate();
+        // Create tables if not exist (works even if migrations missing)
+        db.Database.EnsureCreated();
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Migration failed: {ex.Message}");
-        db.Database.EnsureCreated(); // fallback
+        Console.WriteLine($"SQLite init failed: {ex.Message}");
     }
 }
 
