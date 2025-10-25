@@ -20,8 +20,19 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<TaskApp.Infrastructure.Persistence.TodoDbContext>();
-    db.Database.Migrate(); // create db
+
+    try
+    {
+        // if ada migration, apply.
+        db.Database.Migrate();
+    }
+    catch
+    {
+        // Fallback: if migration failed (ex DB empty), create schema terus.
+        db.Database.EnsureCreated();
+    }
 }
+
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
