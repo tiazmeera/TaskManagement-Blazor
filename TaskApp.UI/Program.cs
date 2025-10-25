@@ -23,13 +23,13 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        // if ada migration, apply.
+        // Make sure SQLite DB schema exists
         db.Database.Migrate();
     }
-    catch
+    catch (Exception ex)
     {
-        // Fallback: if migration failed (ex DB empty), create schema terus.
-        db.Database.EnsureCreated();
+        Console.WriteLine($"Migration failed: {ex.Message}");
+        db.Database.EnsureCreated(); // fallback
     }
 }
 
