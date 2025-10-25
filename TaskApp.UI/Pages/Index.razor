@@ -1,0 +1,105 @@
+﻿@page "/"
+@using TaskApp.Application.Features.Tasks.Queries
+@using TaskApp.Application.Features.Tasks.Commands
+@using TaskApp.Application.DTOs
+@inject IMediator Mediator
+@inject IJSRuntime JS
+
+<h3 class="mb-4">📝 Task Management App</h3>
+
+<div class="mb-3">
+    <label class="fw-bold me-2">Filter:</label>
+    <select class="form-select w-auto d-inline-block" @onchange="OnFilterChanged">
+        <option value="All">All</option>
+        <option value="Pending">Pending</option>
+        <option value="Completed">Completed</option>
+    </select>
+</div>
+
+<AddTaskForm OnTaskAdded="Reload" />
+
+@if (isLoading)
+{
+    <div class="text-muted">Loading tasks...</div>
+}
+else if (tasks == null || !tasks.Any())
+{
+    <div class="text-muted">No tasks available.</div>
+}
+else
+{
+    <div class="list-group shadow-sm">
+        @foreach (var task in tasks)
+        {
+            <div class="list-group-item d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="@GetTitleClass(task.IsCompleted)">
+                        @task.Title
+                    </h6>
+                    @if (!string.IsNullOrWhiteSpace(task.Description))
+                    {
+                        <small>@task.Description</small><br />
+                    }
+                    <small class="text-muted">@task.CreatedAt.ToLocalTime().ToString("g")</small>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-outline-success me-2"
+                            @onclick="() => ToggleComplete(task.Id, !task.IsCompleted)">
+                        @(task.IsCompleted ? "Undo" : "Complete")
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger"
+                            @onclick="() => DeleteTask(task.Id)">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private IEnumerable<TodoTaskDto>? tasks;
+    private bool isLoading = true;
+    private TaskFilter currentFilter = TaskFilter.All;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTasks();
+    }
+
+    private async Task LoadTasks()
+    {
+        isLoading = true;
+        tasks = await Mediator.Send(new GetTasksQuery(currentFilter));
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task OnFilterChanged(ChangeEventArgs e)
+    {
+        var selected = e.Value?.ToString() ?? "All";
+        currentFilter = Enum.Parse<TaskFilter>(selected);
+        await LoadTasks();
+    }
+
+    private async Task ToggleComplete(Guid id, bool markComplete)
+    {
+        await Mediator.Send(new ToggleCompleteCommand(id, markComplete));
+        await LoadTasks();
+    }
+
+    private async Task DeleteTask(Guid id)
+    {
+        bool confirm = await JS.InvokeAsync<bool>("confirm", $"Delete this task?");
+        if (confirm)
+        {
+            await Mediator.Send(new DeleteTaskCommand(id));
+            await LoadTasks();
+        }
+    }
+
+    private async Task Reload() => await LoadTasks();
+
+    private string GetTitleClass(bool isCompleted)
+        => isCompleted ? "text-decoration-line-through text-muted" : "";
+}

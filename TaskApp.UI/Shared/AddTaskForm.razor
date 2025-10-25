@@ -1,0 +1,57 @@
+﻿@using TaskApp.Application.Features.Tasks.Commands
+@inject IMediator Mediator
+
+<div class="card mb-3 p-3 shadow-sm rounded-3">
+    <h5>Add New Task</h5>
+
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-2">
+            <InputText class="form-control" @bind-Value="model.Title" placeholder="Title" />
+        </div>
+
+        <div class="mb-2">
+            <InputTextArea class="form-control" @bind-Value="model.Description" placeholder="Description (optional)" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+            @(isSubmitting ? "Adding..." : "Add Task")
+        </button>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnTaskAdded { get; set; }
+
+    private CreateTaskModel model = new();
+    private bool isSubmitting = false;
+
+    private async Task HandleValidSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            await Mediator.Send(new CreateTaskCommand(model.Title, model.Description));
+            model = new(); // reset form
+            await OnTaskAdded.InvokeAsync(); // reload parent list
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    public class CreateTaskModel
+    {
+        [Required(ErrorMessage = "Title is required")]
+        public string Title { get; set; } = string.Empty;
+
+        public string? Description { get; set; }
+    }
+}
